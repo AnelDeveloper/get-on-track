@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(cuid())
+  name            String
+  email           String    @unique
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  password        String?
+  googleId        String?   @unique @map("google_id")
+  avatar          String?
+  bio             String?
+  role            String    @default("user")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  posts              Post[]
+  comments           Comment[]
+  postLikes          PostLike[]
+  notifications      Notification[] @relation("NotificationRecipient")
+  sentNotifications  Notification[] @relation("NotificationSender")
+  activityLogs       ActivityLog[]
+  transformations    Transformation[]
+
+  @@map("users")
+}
+
+model Post {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  body         String
+  image        String?
+  mediaType    String?  @map("media_type")
+  repostId     String?  @map("repost_id")
+  projectTitle String?  @map("project_title")
+  projectUrl   String?  @map("project_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  originalPost  Post?         @relation("Reposts", fields: [repostId], references: [id], onDelete: SetNull)
+  reposts       Post[]        @relation("Reposts")
+  comments      Comment[]
+  likes         PostLike[]
+  tags          PostTag[]
+  notifications Notification[]
+
+  @@map("posts")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  postId    String   @map("post_id")
+  body      String
+  parentId  String?  @map("parent_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post    Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("CommentReplies")
+
+  @@map("comments")
+}
+
+model PostLike {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  postId    String   @map("post_id")
+  reaction  String   @default("like")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@map("post_likes")
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  posts PostTag[]
+
+  @@map("tags")
+}
+
+model PostTag {
+  postId String @map("post_id")
+  tagId  String @map("tag_id")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@map("post_tags")
+}
+
+model Notification {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  fromUserId String    @map("from_user_id")
+  type       String
+  reaction   String?
+  postId     String    @map("post_id")
+  readAt     DateTime? @map("read_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user     User @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  fromUser User @relation("NotificationSender", fields: [fromUserId], references: [id], onDelete: Cascade)
+  post     Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Transformation {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  clientName  String   @map("client_name")
+  description String?
+  beforeImage String   @map("before_image")
+  afterImage  String   @map("after_image")
+  duration    String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("transformations")
+}
+
+model GalleryPhoto {
+  id        String   @id @default(cuid())
+  image     String
+  caption   String?
+  sortOrder Int      @default(0) @map("sort_order")
+  isHero    Boolean  @default(false) @map("is_hero")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("gallery_photos")
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  action    String
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  method    String
+  path      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("activity_logs")
+}
