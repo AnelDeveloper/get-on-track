@@ -6,12 +6,14 @@ import { Home, Search, ArrowLeftRight, Bell, User, Dumbbell, Shield, LogOut } fr
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import ConfirmDialog from "./ConfirmDialog";
 import UserAvatar from "./UserAvatar";
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [unread, setUnread] = useState(0);
+  const [showLogout, setShowLogout] = useState(false);
 
   useEffect(() => {
     api.notifications.unreadCount().then((d) => setUnread(d.count)).catch(() => {});
@@ -97,7 +99,7 @@ export default function Sidebar() {
               <p className="text-[11px] text-zinc-500 truncate">{user.email}</p>
             </div>
             <button
-              onClick={logout}
+              onClick={() => setShowLogout(true)}
               className="p-1.5 text-zinc-600 hover:text-red-400 transition-colors rounded-lg hover:bg-zinc-800"
               title="Logout"
             >
@@ -106,6 +108,16 @@ export default function Sidebar() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={showLogout}
+        title="Logout"
+        message="Are you sure you want to log out?"
+        confirmText="Logout"
+        variant="warning"
+        onConfirm={logout}
+        onCancel={() => setShowLogout(false)}
+      />
     </aside>
   );
 }

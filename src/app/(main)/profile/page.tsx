@@ -5,11 +5,13 @@ import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import UserAvatar from "@/components/UserAvatar";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { Camera, Settings, LogOut, Shield, Save, X } from "lucide-react";
 import Link from "next/link";
 
 export default function ProfilePage() {
   const { user, logout, refreshUser } = useAuth();
+  const [showLogout, setShowLogout] = useState(false);
   const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name || "");
@@ -66,7 +68,7 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Profile</h1>
-        <button onClick={logout} className="flex items-center gap-1.5 text-zinc-500 hover:text-red-400 text-sm transition-colors lg:hidden">
+        <button onClick={() => setShowLogout(true)} className="flex items-center gap-1.5 text-zinc-500 hover:text-red-400 text-sm transition-colors lg:hidden">
           <LogOut size={16} /> Logout
         </button>
       </div>
@@ -183,6 +185,16 @@ export default function ProfilePage() {
         )}
       </div>
       </div>
+
+      <ConfirmDialog
+        open={showLogout}
+        title="Logout"
+        message="Are you sure you want to log out?"
+        confirmText="Logout"
+        variant="warning"
+        onConfirm={logout}
+        onCancel={() => setShowLogout(false)}
+      />
     </div>
   );
 }
