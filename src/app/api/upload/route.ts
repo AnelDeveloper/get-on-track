@@ -1,7 +1,10 @@
 import { getAuthUser, jsonError, jsonSuccess } from "@/lib/auth";
 import { NextRequest } from "next/server";
+import { put } from "@vercel/blob";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+
+const IS_VERCEL = process.env.VERCEL === "1";
 
 export async function POST(req: NextRequest) {
   const user = await getAuthUser(req);
@@ -25,20 +28,27 @@ export async function POST(req: NextRequest) {
     }
 
     const ext = file.name.split(".").pop();
-    const filename = `${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads", type);
-
-    // Ensure upload directory exists
-    await mkdir(uploadDir, { recursive: true });
-
-    const filePath = path.join(uploadDir, filename);
-    const bytes = await file.arrayBuffer();
-    await writeFile(filePath, Buffer.from(bytes));
-
+    const filename = `${type}/${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
     const isVideo = file.type.startsWith("video/");
-    const url = `/uploads/${type}/${filename}`;
 
-    return jsonSuccess({ url, mediaType: isVideo ? "video" : "image" });
+    if (IS_VERCEL) {
+      // Vercel: use Blob storage
+      const blob = await put(filename, file, {
+        access: "public",
+        addRandomSuffix: false,
+      });
+      return jsonSuccess({ url: blob.url, mediaType: isVideo ? "video" : "image" });
+    } else {
+      // Local dev: write to public/uploads/
+      const uploadDir = path.join(process.cwd(), "public", "uploads", type);
+      await mkdir(uploadDir, { recursive: true });
+      const localFilename = `${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
+      const filePath = path.join(uploadDir, localFilename);
+      const bytes = await file.arrayBuffer();
+      await writeFile(filePath, Buffer.from(bytes));
+      const url = `/uploads/${type}/${localFilename}`;
+      return jsonSuccess({ url, mediaType: isVideo ? "video" : "image" });
+    }
   } catch (e) {
     console.error("Upload error:", e);
     return jsonError("Upload failed", 500);
